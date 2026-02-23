@@ -2,6 +2,7 @@
 
 #include <QVector>
 #include <QWidget>
+#include <deque>
 
 QT_BEGIN_NAMESPACE
 class QChart;
@@ -11,6 +12,7 @@ class QDoubleSpinBox;
 class QLineSeries;
 class QPushButton;
 class QSettings;
+class QTimer;
 class QValueAxis;
 QT_END_NAMESPACE
 
@@ -34,6 +36,7 @@ class TimeSeriesWidget : public QWidget {
   void onPauseToggled();
   void onExportDataClicked();
   void onExportImageClicked();
+  void renderFrame();
 
  private:
   struct SamplePoint {
@@ -45,6 +48,7 @@ class TimeSeriesWidget : public QWidget {
 
   void applyAxisRange();
   void updateXAxisRangeFor(qreal right_sec);
+  QVector<QPointF> buildDisplayPoints() const;
 
   MeasurementModel* model_;
   QChart* chart_;
@@ -61,8 +65,10 @@ class TimeSeriesWidget : public QWidget {
   QPushButton* pause_button_;
   QPushButton* export_data_button_;
   QPushButton* export_image_button_;
+  QTimer* render_timer_;
 
   qint64 window_ms_ = 10000;
   bool paused_ = false;
   QVector<SamplePoint> samples_;
+  std::deque<SamplePoint> window_samples_;
 };

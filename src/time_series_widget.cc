@@ -15,6 +15,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QTextStream>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
@@ -39,7 +40,8 @@ TimeSeriesWidget::TimeSeriesWidget(MeasurementModel* model, QWidget* parent)
       reset_button_(new QPushButton("Reset history", this)),
       pause_button_(new QPushButton("Pause", this)),
       export_data_button_(new QPushButton("Export data", this)),
-      export_image_button_(new QPushButton("Export image", this)) {
+      export_image_button_(new QPushButton("Export image", this)),
+      render_timer_(new QTimer(this)) {
   chart_->addSeries(series_);
   chart_->legend()->hide();
   chart_->setMargins(QMargins(0, 0, 0, 0));
@@ -108,6 +110,10 @@ TimeSeriesWidget::TimeSeriesWidget(MeasurementModel* model, QWidget* parent)
   connect(export_data_button_, &QPushButton::clicked, this, &TimeSeriesWidget::onExportDataClicked);
   connect(export_image_button_, &QPushButton::clicked, this,
           &TimeSeriesWidget::onExportImageClicked);
+  connect(render_timer_, &QTimer::timeout, this, &TimeSeriesWidget::renderFrame);
+
+  render_timer_->setInterval(16);
+  render_timer_->start();
 }
 
 void TimeSeriesWidget::loadSettings(QSettings* settings) {
@@ -117,6 +123,10 @@ void TimeSeriesWidget::loadSettings(QSettings* settings) {
   min_spin_->setValue(settings->value("y_min", 0.0).toDouble());
   max_spin_->setValue(settings->value("y_max", model_->referenceMax()).toDouble());
   duration_spin_->setValue(settings->value("duration_sec", 10.0).toDouble());
+  const bool paused = settings->value("paused", false).toBool();
+  if (paused_ != paused) {
+    onPauseToggled();
+  }
 
   settings->endGroup();
 }
@@ -127,6 +137,7 @@ void TimeSeriesWidget::saveSettings(QSettings* settings) const {
   settings->setValue("y_min", min_spin_->value());
   settings->setValue("y_max", max_spin_->value());
   settings->setValue("duration_sec", duration_spin_->value());
+  settings->setValue("paused", paused_);
   settings->endGroup();
 }
 
@@ -135,36 +146,21 @@ void TimeSeriesWidget::onSampleUpdated(double raw_value, double processed_value,
   if (paused_) {
     return;
   }
-  samples_.append({timestamp_ms, raw_value, processed_value, averaged_value});
-  series_->append(static_cast<qreal>(timestamp_ms) / 1000.0, averaged_value);
 
-  const qreal right = static_cast<qreal>(timestamp_ms) / 1000.0;
-  updateXAxisRangeFor(right);
+  const SamplePoint sample{timestamp_ms, raw_value, processed_value, averaged_value};
+  samples_.append(sample);
+  window_samples_.push_back(sample);
 
-  const qreal left = axis_x_->min();
-  while (!series_->points().isEmpty() && series_->points().front().x() < left) {
-    series_->remove(0);
-  }
-
-  if (auto_scale_check_->isChecked() && !series_->points().isEmpty()) {
-    qreal ymin = series_->points().front().y();
-    qreal ymax = ymin;
-    const auto points = series_->points();
-    for (const auto& p : points) {
-      ymin = qMin(ymin, p.y());
-      ymax = qMax(ymax, p.y());
-    }
-    if (qFuzzyCompare(ymin, ymax)) {
-      ymin -= 1.0;
-      ymax += 1.0;
-    }
-    axis_y_->setRange(ymin, ymax);
+  const qint64 min_timestamp_ms = timestamp_ms - window_ms_;
+  while (!window_samples_.empty() && window_samples_.front().timestamp_ms < min_timestamp_ms) {
+    window_samples_.pop_front();
   }
 }
 
 void TimeSeriesWidget::onHistoryReset() {
   series_->clear();
   samples_.clear();
+  window_samples_.clear();
   axis_x_->setRange(0.0, static_cast<double>(window_ms_) / 1000.0);
   applyAxisRange();
 }
@@ -186,8 +182,14 @@ void TimeSeriesWidget::onRangeEdited() {
 
 void TimeSeriesWidget::onDurationChanged(double duration_sec) {
   window_ms_ = static_cast<qint64>(qMax(0.1, duration_sec) * 1000.0);
-  const qreal right = series_->points().isEmpty() ? static_cast<qreal>(window_ms_) / 1000.0
-                                                  : series_->points().back().x();
+  const qreal right = window_samples_.empty()
+                          ? static_cast<qreal>(window_ms_) / 1000.0
+                          : static_cast<qreal>(window_samples_.back().timestamp_ms) / 1000.0;
+  const qint64 min_timestamp_ms =
+      static_cast<qint64>(right * 1000.0) - static_cast<qint64>(window_ms_);
+  while (!window_samples_.empty() && window_samples_.front().timestamp_ms < min_timestamp_ms) {
+    window_samples_.pop_front();
+  }
   updateXAxisRangeFor(right);
 }
 
@@ -259,4 +261,97 @@ void TimeSeriesWidget::updateXAxisRangeFor(qreal right_sec) {
   const qreal width_sec = static_cast<qreal>(window_ms_) / 1000.0;
   const qreal left_sec = qMax<qreal>(0.0, right_sec - width_sec);
   axis_x_->setRange(left_sec, right_sec);
+}
+
+void TimeSeriesWidget::renderFrame() {
+  if (paused_) {
+    return;
+  }
+
+  if (window_samples_.empty()) {
+    return;
+  }
+
+  const qreal right_sec = static_cast<qreal>(window_samples_.back().timestamp_ms) / 1000.0;
+  updateXAxisRangeFor(right_sec);
+
+  const QVector<QPointF> points = buildDisplayPoints();
+  if (points.isEmpty()) {
+    return;
+  }
+
+  series_->replace(points);
+
+  if (auto_scale_check_->isChecked()) {
+    qreal ymin = points.front().y();
+    qreal ymax = ymin;
+    for (const auto& p : points) {
+      ymin = qMin(ymin, p.y());
+      ymax = qMax(ymax, p.y());
+    }
+    if (qFuzzyCompare(ymin, ymax)) {
+      ymin -= 1.0;
+      ymax += 1.0;
+    }
+    axis_y_->setRange(ymin, ymax);
+  }
+}
+
+QVector<QPointF> TimeSeriesWidget::buildDisplayPoints() const {
+  if (window_samples_.empty()) {
+    return {};
+  }
+
+  const int viewport_width = qMax(64, chart_view_->viewport()->width());
+  const int max_display_points = viewport_width * 2;
+  const int sample_count = static_cast<int>(window_samples_.size());
+
+  QVector<QPointF> points;
+  if (sample_count <= max_display_points) {
+    points.reserve(sample_count);
+    for (const auto& sample : window_samples_) {
+      points.append(
+          QPointF(static_cast<qreal>(sample.timestamp_ms) / 1000.0, sample.averaged_value));
+    }
+    return points;
+  }
+
+  const int bucket_size = qMax(1, sample_count / max_display_points);
+  points.reserve(max_display_points);
+
+  for (int start = 0; start < sample_count; start += bucket_size) {
+    const int end = qMin(sample_count, start + bucket_size);
+    if (start >= end) {
+      break;
+    }
+
+    int min_index = start;
+    int max_index = start;
+    for (int i = start + 1; i < end; ++i) {
+      if (window_samples_[i].averaged_value < window_samples_[min_index].averaged_value) {
+        min_index = i;
+      }
+      if (window_samples_[i].averaged_value > window_samples_[max_index].averaged_value) {
+        max_index = i;
+      }
+    }
+
+    auto append_point = [this, &points](int index) {
+      const auto& sample = window_samples_[index];
+      points.append(
+          QPointF(static_cast<qreal>(sample.timestamp_ms) / 1000.0, sample.averaged_value));
+    };
+
+    if (min_index <= max_index) {
+      append_point(min_index);
+      if (max_index != min_index) {
+        append_point(max_index);
+      }
+    } else {
+      append_point(max_index);
+      append_point(min_index);
+    }
+  }
+
+  return points;
 }

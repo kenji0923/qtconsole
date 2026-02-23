@@ -4,6 +4,7 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QProgressBar>
+#include <QSettings>
 #include <QVBoxLayout>
 
 #include "measurement_model.h"
@@ -47,6 +48,20 @@ NumericRatioWidget::NumericRatioWidget(MeasurementModel* model, QWidget* parent)
           &NumericRatioWidget::onReferenceMinChanged);
   connect(max_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
           &NumericRatioWidget::onReferenceMaxChanged);
+}
+
+void NumericRatioWidget::loadSettings(QSettings* settings) {
+  settings->beginGroup("numeric_ratio");
+  min_spin_->setValue(settings->value("reference_min", model_->referenceMin()).toDouble());
+  max_spin_->setValue(settings->value("reference_max", model_->referenceMax()).toDouble());
+  settings->endGroup();
+}
+
+void NumericRatioWidget::saveSettings(QSettings* settings) const {
+  settings->beginGroup("numeric_ratio");
+  settings->setValue("reference_min", min_spin_->value());
+  settings->setValue("reference_max", max_spin_->value());
+  settings->endGroup();
 }
 
 void NumericRatioWidget::onSampleUpdated(double, double, double averaged_value, double ratio,

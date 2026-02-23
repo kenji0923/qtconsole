@@ -5,12 +5,15 @@
 class QLabel;
 class QProgressBar;
 class QDoubleSpinBox;
+class QSettings;
 class MeasurementModel;
 
 class NumericRatioWidget : public QWidget {
   Q_OBJECT
  public:
   explicit NumericRatioWidget(MeasurementModel* model, QWidget* parent = nullptr);
+  void loadSettings(QSettings* settings);
+  void saveSettings(QSettings* settings) const;
 
  private slots:
   void onSampleUpdated(double raw_value, double processed_value, double averaged_value,

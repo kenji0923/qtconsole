@@ -6,6 +6,7 @@ class QCloseEvent;
 class DataReceiver;
 class MeasurementModel;
 class QSettings;
+class NumericRatioWidget;
 class ReceiverControlWidget;
 class TimeSeriesWidget;
 class QDockWidget;
@@ -46,6 +47,7 @@ class MainWindow : public QMainWindow {
 
   MeasurementModel* model_;
   DataReceiver* receiver_;
+  NumericRatioWidget* numeric_ratio_widget_;
   ReceiverControlWidget* receiver_control_widget_;
   TimeSeriesWidget* time_series_widget_;
   QDockWidget* input_dock_;

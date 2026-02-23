@@ -31,6 +31,7 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
     : QMainWindow(parent),
       model_(new MeasurementModel(this)),
       receiver_(new DataReceiver(this)),
+      numeric_ratio_widget_(nullptr),
       receiver_control_widget_(nullptr),
       time_series_widget_(nullptr),
       input_dock_(nullptr),
@@ -49,10 +50,10 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
   input_dock_->setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
   addDockWidget(Qt::TopDockWidgetArea, input_dock_);
 
-  auto* numeric_widget = new NumericRatioWidget(model_, this);
+  numeric_ratio_widget_ = new NumericRatioWidget(model_, this);
   auto* numeric_dock = new QDockWidget("Numeric / Ratio", this);
   numeric_dock->setObjectName("numeric_ratio_dock");
-  numeric_dock->setWidget(numeric_widget);
+  numeric_dock->setWidget(numeric_ratio_widget_);
   numeric_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
   addDockWidget(Qt::LeftDockWidgetArea, numeric_dock);
 
@@ -138,8 +139,17 @@ void MainWindow::loadSettings() {
   }
   settings.endGroup();
 
+  numeric_ratio_widget_->loadSettings(&settings);
   receiver_control_widget_->loadSettings(&settings);
   time_series_widget_->loadSettings(&settings);
+  settings.beginGroup("statistics");
+  const bool statistics_running = settings.value("running", true).toBool();
+  if (statistics_running) {
+    model_->startStatistics();
+  } else {
+    model_->stopStatistics();
+  }
+  settings.endGroup();
 }
 
 void MainWindow::saveSettings() const {
@@ -151,8 +161,12 @@ void MainWindow::saveSettings() const {
   settings.setValue("state", saveState());
   settings.endGroup();
 
+  numeric_ratio_widget_->saveSettings(&settings);
   receiver_control_widget_->saveSettings(&settings);
   time_series_widget_->saveSettings(&settings);
+  settings.beginGroup("statistics");
+  settings.setValue("running", model_->statisticsRunning());
+  settings.endGroup();
 
   QSettings bootstrap_settings = createBootstrapSettings();
   bootstrap_settings.setValue("last_identity", windowTitle());
@@ -206,8 +220,12 @@ void MainWindow::onSaveConfigAs() {
   file_settings.setValue("state", saveState());
   file_settings.endGroup();
 
+  numeric_ratio_widget_->saveSettings(&file_settings);
   receiver_control_widget_->saveSettings(&file_settings);
   time_series_widget_->saveSettings(&file_settings);
+  file_settings.beginGroup("statistics");
+  file_settings.setValue("running", model_->statisticsRunning());
+  file_settings.endGroup();
 }
 
 void MainWindow::onLoadConfig() {
@@ -218,8 +236,17 @@ void MainWindow::onLoadConfig() {
   }
 
   QSettings file_settings(path, QSettings::IniFormat);
+  numeric_ratio_widget_->loadSettings(&file_settings);
   receiver_control_widget_->loadSettings(&file_settings);
   time_series_widget_->loadSettings(&file_settings);
+  file_settings.beginGroup("statistics");
+  const bool statistics_running = file_settings.value("running", true).toBool();
+  if (statistics_running) {
+    model_->startStatistics();
+  } else {
+    model_->stopStatistics();
+  }
+  file_settings.endGroup();
   updateWindowIdentity();
 
   file_settings.beginGroup("main_window");
