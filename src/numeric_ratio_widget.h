@@ -6,6 +6,8 @@ class QLabel;
 class QProgressBar;
 class QDoubleSpinBox;
 class QSettings;
+class QToolButton;
+class QWidget;
 class MeasurementModel;
 
 class NumericRatioWidget : public QWidget {
@@ -18,6 +20,7 @@ class NumericRatioWidget : public QWidget {
  private slots:
   void onSampleUpdated(double raw_value, double processed_value, double averaged_value,
                        double ratio, qint64 timestamp_ms);
+  void onReferenceControlsToggled(bool enabled);
   void onReferenceMinChanged(double value);
   void onReferenceMaxChanged(double value);
 
@@ -25,6 +28,8 @@ class NumericRatioWidget : public QWidget {
   MeasurementModel* model_;
   QLabel* value_label_;
   QProgressBar* ratio_bar_;
+  QToolButton* reference_toggle_button_;
+  QWidget* reference_controls_widget_;
   QDoubleSpinBox* min_spin_;
   QDoubleSpinBox* max_spin_;
 };

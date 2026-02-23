@@ -21,6 +21,7 @@ add_executable(qtconsole
   src/main_window.cc
   src/measurement_model.cc
   src/numeric_ratio_widget.cc
+  src/title_line_widget.cc
   src/time_series_widget.cc
   src/statistics_widget.cc
   src/receiver_control_widget.cc

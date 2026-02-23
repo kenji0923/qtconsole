@@ -14,6 +14,7 @@
 #include "receiver_control_widget.h"
 #include "statistics_widget.h"
 #include "time_series_widget.h"
+#include "title_line_widget.h"
 
 namespace {
 QSettings createBootstrapSettings() {
@@ -31,10 +32,12 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
     : QMainWindow(parent),
       model_(new MeasurementModel(this)),
       receiver_(new DataReceiver(this)),
+      title_line_widget_(nullptr),
       numeric_ratio_widget_(nullptr),
       receiver_control_widget_(nullptr),
       time_series_widget_(nullptr),
       input_dock_(nullptr),
+      title_line_dock_(nullptr),
       always_on_top_action_(nullptr),
       startup_options_(startup_options) {
   setWindowTitle("qtconsole_UDP9000");
@@ -49,6 +52,13 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
   input_dock_->setWidget(receiver_control_widget_);
   input_dock_->setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
   addDockWidget(Qt::TopDockWidgetArea, input_dock_);
+
+  title_line_widget_ = new TitleLineWidget(this);
+  title_line_dock_ = new QDockWidget("Title line", this);
+  title_line_dock_->setObjectName("title_line_dock");
+  title_line_dock_->setWidget(title_line_widget_);
+  title_line_dock_->setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
+  addDockWidget(Qt::TopDockWidgetArea, title_line_dock_);
 
   numeric_ratio_widget_ = new NumericRatioWidget(model_, this);
   auto* numeric_dock = new QDockWidget("Numeric / Ratio", this);
@@ -81,6 +91,7 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
 
   auto* view_menu = menuBar()->addMenu("View");
   view_menu->addAction(input_dock_->toggleViewAction());
+  view_menu->addAction(title_line_dock_->toggleViewAction());
   view_menu->addAction(numeric_dock->toggleViewAction());
   view_menu->addAction(series_dock->toggleViewAction());
   view_menu->addAction(stats_dock->toggleViewAction());
@@ -110,6 +121,10 @@ void MainWindow::updateWindowIdentity() {
   const QString identity = buildWindowIdentity();
   setWindowTitle(identity);
   QCoreApplication::setApplicationName(identity);
+  const QString prefix = "qtconsole_";
+  const QString display_title =
+      identity.startsWith(prefix) ? identity.mid(prefix.size()) : identity;
+  title_line_dock_->setWindowTitle(display_title);
 }
 
 void MainWindow::loadSettings() {
@@ -124,20 +139,15 @@ void MainWindow::loadSettings() {
 
   settings.beginGroup("main_window");
   const bool always_on_top = settings.value("always_on_top", false).toBool();
+  const QByteArray geometry = settings.value("geometry").toByteArray();
+  const QByteArray state = settings.value("state").toByteArray();
+  settings.endGroup();
+
   if (always_on_top_action_->isChecked() != always_on_top) {
     always_on_top_action_->setChecked(always_on_top);
   } else {
     onToggleAlwaysOnTop(always_on_top);
   }
-  const QByteArray geometry = settings.value("geometry").toByteArray();
-  if (!geometry.isEmpty()) {
-    restoreGeometry(geometry);
-  }
-  const QByteArray state = settings.value("state").toByteArray();
-  if (!state.isEmpty()) {
-    restoreState(state);
-  }
-  settings.endGroup();
 
   numeric_ratio_widget_->loadSettings(&settings);
   receiver_control_widget_->loadSettings(&settings);
@@ -150,6 +160,15 @@ void MainWindow::loadSettings() {
     model_->stopStatistics();
   }
   settings.endGroup();
+
+  if (!state.isEmpty()) {
+    restoreState(state);
+  }
+  if (!geometry.isEmpty()) {
+    restoreGeometry(geometry);
+    // Re-apply once after state restore to avoid size-hint growth on tiny windows.
+    restoreGeometry(geometry);
+  }
 }
 
 void MainWindow::saveSettings() const {

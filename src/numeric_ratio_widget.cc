@@ -2,9 +2,11 @@
 
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QProgressBar>
 #include <QSettings>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include "measurement_model.h"
@@ -14,6 +16,8 @@ NumericRatioWidget::NumericRatioWidget(MeasurementModel* model, QWidget* parent)
       model_(model),
       value_label_(new QLabel("0.000", this)),
       ratio_bar_(new QProgressBar(this)),
+      reference_toggle_button_(new QToolButton(this)),
+      reference_controls_widget_(new QWidget(this)),
       min_spin_(new QDoubleSpinBox(this)),
       max_spin_(new QDoubleSpinBox(this)) {
   value_label_->setAlignment(Qt::AlignCenter);
@@ -34,16 +38,27 @@ NumericRatioWidget::NumericRatioWidget(MeasurementModel* model, QWidget* parent)
   max_spin_->setDecimals(4);
   max_spin_->setValue(model_->referenceMax());
 
-  auto* form = new QFormLayout;
+  reference_toggle_button_->setText("Refs");
+  reference_toggle_button_->setCheckable(true);
+  reference_toggle_button_->setChecked(true);
+  reference_toggle_button_->setToolTip("Show/hide reference min/max");
+
+  auto* ratio_row = new QHBoxLayout;
+  ratio_row->addWidget(ratio_bar_, 1);
+  ratio_row->addWidget(reference_toggle_button_);
+
+  auto* form = new QFormLayout(reference_controls_widget_);
   form->addRow("Reference min", min_spin_);
   form->addRow("Reference max", max_spin_);
 
   auto* layout = new QVBoxLayout(this);
   layout->addWidget(value_label_, 1);
-  layout->addWidget(ratio_bar_);
-  layout->addLayout(form);
+  layout->addLayout(ratio_row);
+  layout->addWidget(reference_controls_widget_);
 
   connect(model_, &MeasurementModel::sampleUpdated, this, &NumericRatioWidget::onSampleUpdated);
+  connect(reference_toggle_button_, &QToolButton::toggled, this,
+          &NumericRatioWidget::onReferenceControlsToggled);
   connect(min_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
           &NumericRatioWidget::onReferenceMinChanged);
   connect(max_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
@@ -54,6 +69,8 @@ void NumericRatioWidget::loadSettings(QSettings* settings) {
   settings->beginGroup("numeric_ratio");
   min_spin_->setValue(settings->value("reference_min", model_->referenceMin()).toDouble());
   max_spin_->setValue(settings->value("reference_max", model_->referenceMax()).toDouble());
+  const bool show_reference_controls = settings->value("show_reference_controls", true).toBool();
+  reference_toggle_button_->setChecked(show_reference_controls);
   settings->endGroup();
 }
 
@@ -61,6 +78,7 @@ void NumericRatioWidget::saveSettings(QSettings* settings) const {
   settings->beginGroup("numeric_ratio");
   settings->setValue("reference_min", min_spin_->value());
   settings->setValue("reference_max", max_spin_->value());
+  settings->setValue("show_reference_controls", reference_toggle_button_->isChecked());
   settings->endGroup();
 }
 
@@ -68,6 +86,10 @@ void NumericRatioWidget::onSampleUpdated(double, double, double averaged_value, 
                                          qint64) {
   value_label_->setText(QString::number(averaged_value, 'f', 3));
   ratio_bar_->setValue(static_cast<int>(ratio * 1000.0));
+}
+
+void NumericRatioWidget::onReferenceControlsToggled(bool enabled) {
+  reference_controls_widget_->setVisible(enabled);
 }
 
 void NumericRatioWidget::onReferenceMaxChanged(double value) {

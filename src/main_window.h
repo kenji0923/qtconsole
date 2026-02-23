@@ -9,6 +9,7 @@ class QSettings;
 class NumericRatioWidget;
 class ReceiverControlWidget;
 class TimeSeriesWidget;
+class TitleLineWidget;
 class QDockWidget;
 class QAction;
 class QString;
@@ -47,10 +48,12 @@ class MainWindow : public QMainWindow {
 
   MeasurementModel* model_;
   DataReceiver* receiver_;
+  TitleLineWidget* title_line_widget_;
   NumericRatioWidget* numeric_ratio_widget_;
   ReceiverControlWidget* receiver_control_widget_;
   TimeSeriesWidget* time_series_widget_;
   QDockWidget* input_dock_;
+  QDockWidget* title_line_dock_;
   QAction* always_on_top_action_;
   StartupOptions startup_options_;
 };
