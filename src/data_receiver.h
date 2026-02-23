@@ -27,20 +27,20 @@ class DataReceiver : public QObject {
   bool running() const;
 
  signals:
-  void sample_received(double value);
-  void status_changed(bool running, const QString& message);
+  void sampleReceived(double value);
+  void statusChanged(bool running, const QString& message);
 
  private slots:
-  void on_udp_ready_read();
-  void on_web_socket_connected();
-  void on_web_socket_text(const QString& message);
-  void on_web_socket_binary(const QByteArray& payload);
-  void on_web_socket_disconnected();
-  void send_web_socket_keep_alive();
+  void onUdpReadyRead();
+  void onWebSocketConnected();
+  void onWebSocketText(const QString& message);
+  void onWebSocketBinary(const QByteArray& payload);
+  void onWebSocketDisconnected();
+  void sendWebSocketKeepAlive();
 
  private:
-  bool handle_payload(const QByteArray& payload);
-  bool parse_double(const QByteArray& payload, double* out_value) const;
+  bool handlePayload(const QByteArray& payload);
+  bool parseDouble(const QByteArray& payload, double* out_value) const;
 
   Mode mode_ = Mode::Udp;
   quint16 port_ = 0;

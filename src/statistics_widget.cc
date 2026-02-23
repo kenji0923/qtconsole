@@ -49,14 +49,14 @@ StatisticsWidget::StatisticsWidget(MeasurementModel* model, QWidget* parent)
   layout->addLayout(controls);
   layout->addStretch(1);
 
-  connect(model_, &MeasurementModel::statistics_updated, this,
-          &StatisticsWidget::on_statistics_updated);
-  connect(start_button_, &QPushButton::clicked, this, &StatisticsWidget::on_start);
-  connect(stop_button_, &QPushButton::clicked, this, &StatisticsWidget::on_stop);
-  connect(reset_button_, &QPushButton::clicked, this, &StatisticsWidget::on_reset);
+  connect(model_, &MeasurementModel::statisticsUpdated, this,
+          &StatisticsWidget::onStatisticsUpdated);
+  connect(start_button_, &QPushButton::clicked, this, &StatisticsWidget::onStart);
+  connect(stop_button_, &QPushButton::clicked, this, &StatisticsWidget::onStop);
+  connect(reset_button_, &QPushButton::clicked, this, &StatisticsWidget::onReset);
 }
 
-void StatisticsWidget::on_statistics_updated(const MeasurementModel::Stats& stats) {
+void StatisticsWidget::onStatisticsUpdated(const MeasurementModel::Stats& stats) {
   current_->setText(QString::number(stats.current, 'f', 4));
   average_->setText(QString::number(stats.average, 'f', 4));
   stddev_->setText(QString::number(stats.stddev, 'f', 4));
@@ -66,8 +66,8 @@ void StatisticsWidget::on_statistics_updated(const MeasurementModel::Stats& stat
   rate_->setText(QString::number(stats.rate_hz, 'f', 1));
 }
 
-void StatisticsWidget::on_start() { model_->start_statistics(); }
+void StatisticsWidget::onStart() { model_->startStatistics(); }
 
-void StatisticsWidget::on_stop() { model_->stop_statistics(); }
+void StatisticsWidget::onStop() { model_->stopStatistics(); }
 
-void StatisticsWidget::on_reset() { model_->reset_statistics(); }
+void StatisticsWidget::onReset() { model_->resetStatistics(); }

@@ -9,7 +9,7 @@
 
 DataReceiver::DataReceiver(QObject* parent) : QObject(parent), keep_alive_timer_(new QTimer(this)) {
   keep_alive_timer_->setInterval(5000);
-  connect(keep_alive_timer_, &QTimer::timeout, this, &DataReceiver::send_web_socket_keep_alive);
+  connect(keep_alive_timer_, &QTimer::timeout, this, &DataReceiver::sendWebSocketKeepAlive);
 }
 
 DataReceiver::~DataReceiver() { stop(); }
@@ -22,25 +22,24 @@ bool DataReceiver::start(Mode mode, quint16 port) {
 
   if (mode == Mode::Udp) {
     udp_socket_ = new QUdpSocket(this);
-    connect(udp_socket_, &QUdpSocket::readyRead, this, &DataReceiver::on_udp_ready_read);
+    connect(udp_socket_, &QUdpSocket::readyRead, this, &DataReceiver::onUdpReadyRead);
     if (!udp_socket_->bind(QHostAddress::AnyIPv4, port, QUdpSocket::ShareAddress)) {
-      emit status_changed(false, QStringLiteral("Failed to bind UDP port %1").arg(port));
+      emit statusChanged(false, QStringLiteral("Failed to bind UDP port %1").arg(port));
       udp_socket_->deleteLater();
       udp_socket_ = nullptr;
       return false;
     }
     running_ = true;
-    emit status_changed(true, QStringLiteral("Listening UDP on %1").arg(port));
+    emit statusChanged(true, QStringLiteral("Listening UDP on %1").arg(port));
     return true;
   }
 
   ws_server_ =
       new QWebSocketServer(QStringLiteral("qtconsole"), QWebSocketServer::NonSecureMode, this);
-  connect(ws_server_, &QWebSocketServer::newConnection, this,
-          &DataReceiver::on_web_socket_connected);
+  connect(ws_server_, &QWebSocketServer::newConnection, this, &DataReceiver::onWebSocketConnected);
 
   if (!ws_server_->listen(QHostAddress::AnyIPv4, port)) {
-    emit status_changed(false, QStringLiteral("Failed to listen WebSocket on %1").arg(port));
+    emit statusChanged(false, QStringLiteral("Failed to listen WebSocket on %1").arg(port));
     ws_server_->deleteLater();
     ws_server_ = nullptr;
     return false;
@@ -48,7 +47,7 @@ bool DataReceiver::start(Mode mode, quint16 port) {
 
   keep_alive_timer_->start();
   running_ = true;
-  emit status_changed(true, QStringLiteral("Listening WebSocket on %1").arg(port));
+  emit statusChanged(true, QStringLiteral("Listening WebSocket on %1").arg(port));
   return true;
 }
 
@@ -74,7 +73,7 @@ void DataReceiver::stop() {
 
   if (running_) {
     running_ = false;
-    emit status_changed(false, QStringLiteral("Receiver stopped"));
+    emit statusChanged(false, QStringLiteral("Receiver stopped"));
   }
 }
 
@@ -84,16 +83,16 @@ quint16 DataReceiver::port() const { return port_; }
 
 bool DataReceiver::running() const { return running_; }
 
-void DataReceiver::on_udp_ready_read() {
+void DataReceiver::onUdpReadyRead() {
   while (udp_socket_ && udp_socket_->hasPendingDatagrams()) {
     QByteArray payload;
     payload.resize(static_cast<int>(udp_socket_->pendingDatagramSize()));
     udp_socket_->readDatagram(payload.data(), payload.size());
-    handle_payload(payload);
+    handlePayload(payload);
   }
 }
 
-void DataReceiver::on_web_socket_connected() {
+void DataReceiver::onWebSocketConnected() {
   if (!ws_server_) {
     return;
   }
@@ -104,16 +103,16 @@ void DataReceiver::on_web_socket_connected() {
   }
 
   ws_clients_.append(socket);
-  connect(socket, &QWebSocket::textMessageReceived, this, &DataReceiver::on_web_socket_text);
-  connect(socket, &QWebSocket::binaryMessageReceived, this, &DataReceiver::on_web_socket_binary);
-  connect(socket, &QWebSocket::disconnected, this, &DataReceiver::on_web_socket_disconnected);
+  connect(socket, &QWebSocket::textMessageReceived, this, &DataReceiver::onWebSocketText);
+  connect(socket, &QWebSocket::binaryMessageReceived, this, &DataReceiver::onWebSocketBinary);
+  connect(socket, &QWebSocket::disconnected, this, &DataReceiver::onWebSocketDisconnected);
 }
 
-void DataReceiver::on_web_socket_text(const QString& message) { handle_payload(message.toUtf8()); }
+void DataReceiver::onWebSocketText(const QString& message) { handlePayload(message.toUtf8()); }
 
-void DataReceiver::on_web_socket_binary(const QByteArray& payload) { handle_payload(payload); }
+void DataReceiver::onWebSocketBinary(const QByteArray& payload) { handlePayload(payload); }
 
-void DataReceiver::on_web_socket_disconnected() {
+void DataReceiver::onWebSocketDisconnected() {
   auto* socket = qobject_cast<QWebSocket*>(sender());
   if (!socket) {
     return;
@@ -123,7 +122,7 @@ void DataReceiver::on_web_socket_disconnected() {
   socket->deleteLater();
 }
 
-void DataReceiver::send_web_socket_keep_alive() {
+void DataReceiver::sendWebSocketKeepAlive() {
   for (auto* client : ws_clients_) {
     if (client->state() == QAbstractSocket::ConnectedState) {
       client->ping();
@@ -131,16 +130,16 @@ void DataReceiver::send_web_socket_keep_alive() {
   }
 }
 
-bool DataReceiver::handle_payload(const QByteArray& payload) {
+bool DataReceiver::handlePayload(const QByteArray& payload) {
   double value = 0.0;
-  if (!parse_double(payload, &value)) {
+  if (!parseDouble(payload, &value)) {
     return false;
   }
-  emit sample_received(value);
+  emit sampleReceived(value);
   return true;
 }
 
-bool DataReceiver::parse_double(const QByteArray& payload, double* out_value) const {
+bool DataReceiver::parseDouble(const QByteArray& payload, double* out_value) const {
   bool ok = false;
   const double as_text = QString::fromUtf8(payload).trimmed().toDouble(&ok);
   if (ok) {
