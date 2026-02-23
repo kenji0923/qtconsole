@@ -9,8 +9,15 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Network WebSockets)
 
+set(APP_WIN_RESOURCE)
+if(WIN32)
+  set(APP_WIN_RESOURCE windows/app_icon.rc)
+endif()
+
 add_executable(qtconsole
+  ${APP_WIN_RESOURCE}
   src/main.cc
+  src/app_icon.cc
   src/main_window.cc
   src/measurement_model.cc
   src/numeric_ratio_widget.cc
@@ -18,6 +25,10 @@ add_executable(qtconsole
   src/statistics_widget.cc
   src/receiver_control_widget.cc
   src/data_receiver.cc
+)
+
+set_target_properties(qtconsole PROPERTIES
+  WIN32_EXECUTABLE ON
 )
 
 target_include_directories(qtconsole PRIVATE src)

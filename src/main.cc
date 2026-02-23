@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QTextStream>
 
+#include "app_icon.h"
 #include "main_window.h"
 
 int main(int argc, char* argv[]) {
@@ -25,6 +26,8 @@ int main(int argc, char* argv[]) {
   parser.addOption(measurement_option);
 
   parser.process(app);
+
+  app.setWindowIcon(createAppIcon());
 
   MainWindow::StartupOptions startup_options;
   if (parser.isSet(protocol_option)) {
