@@ -22,5 +22,13 @@ Statistics to show current value, average, standard deviation, min and max, acqu
 ## Communicatoin
 Accepts TCP through WebSocket with keep-alive feature, or UDP packet at the port number which can be specified. Would be expanded for other methods like serial port.
 
+## Configurations
+- Save and load functions. Auto-save the configurations, including window layouts, to OS-specific locations. The organization name is "kshu" and app name is "qtconsole".
+- Line input to set the title of measurement. The widget title should be updated dynamically according to this as "qtconsole - {title_of_measurement}".
+- An offset for the received values and scale factor for the received values. Then values will be recorded as "scale_factor * raw_value + offset".
+- Averaging window length used in Numeric / Ratio and Time series.
+- Time duration (width of x-axis) for time series
+- Export function for time series, as numeric data (timestamp,raw_value,processed_value) or image files (png or pdf).
+
 ## Coding rules
 - Follow Google C++ Style Guide
