@@ -13,10 +13,10 @@ class StatisticsWidget : public QWidget {
   explicit StatisticsWidget(MeasurementModel* model, QWidget* parent = nullptr);
 
  private slots:
-  void on_statistics_updated(const MeasurementModel::Stats& stats);
-  void on_start();
-  void on_stop();
-  void on_reset();
+  void onStatisticsUpdated(const MeasurementModel::Stats& stats);
+  void onStart();
+  void onStop();
+  void onReset();
 
  private:
   MeasurementModel* model_;

@@ -1,14 +1,16 @@
 #pragma once
 
+#include <QVector>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
-class QPushButton;
-class QCheckBox;
-class QDoubleSpinBox;
 class QChart;
 class QChartView;
+class QCheckBox;
+class QDoubleSpinBox;
 class QLineSeries;
+class QPushButton;
+class QSettings;
 class QValueAxis;
 QT_END_NAMESPACE
 
@@ -19,14 +21,30 @@ class TimeSeriesWidget : public QWidget {
  public:
   explicit TimeSeriesWidget(MeasurementModel* model, QWidget* parent = nullptr);
 
+  void loadSettings(QSettings* settings);
+  void saveSettings(QSettings* settings) const;
+
  private slots:
-  void on_sample_updated(double value, double ratio, qint64 timestamp_ms);
-  void on_history_reset();
-  void on_auto_scale_toggled(bool checked);
-  void on_range_edited();
+  void onSampleUpdated(double raw_value, double processed_value, double averaged_value,
+                       double ratio, qint64 timestamp_ms);
+  void onHistoryReset();
+  void onAutoScaleToggled(bool checked);
+  void onRangeEdited();
+  void onDurationChanged(double duration_sec);
+  void onPauseToggled();
+  void onExportDataClicked();
+  void onExportImageClicked();
 
  private:
-  void apply_axis_range();
+  struct SamplePoint {
+    qint64 timestamp_ms = 0;
+    double raw_value = 0.0;
+    double processed_value = 0.0;
+    double averaged_value = 0.0;
+  };
+
+  void applyAxisRange();
+  void updateXAxisRangeFor(qreal right_sec);
 
   MeasurementModel* model_;
   QChart* chart_;
@@ -38,7 +56,13 @@ class TimeSeriesWidget : public QWidget {
   QCheckBox* auto_scale_check_;
   QDoubleSpinBox* min_spin_;
   QDoubleSpinBox* max_spin_;
+  QDoubleSpinBox* duration_spin_;
   QPushButton* reset_button_;
+  QPushButton* pause_button_;
+  QPushButton* export_data_button_;
+  QPushButton* export_image_button_;
 
   qint64 window_ms_ = 10000;
+  bool paused_ = false;
+  QVector<SamplePoint> samples_;
 };
