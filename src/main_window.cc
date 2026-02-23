@@ -52,10 +52,7 @@ MainWindow::MainWindow(QWidget* parent)
   view_menu->addAction(series_dock->toggleViewAction());
   view_menu->addAction(stats_dock->toggleViewAction());
 
-  auto* center_placeholder =
-      new QLabel("Use the dock tabs to switch views. Drag a tab to undock or re-dock.", this);
-  center_placeholder->setAlignment(Qt::AlignCenter);
-  setCentralWidget(center_placeholder);
+  setCentralWidget(new QWidget());
 }
 
 MainWindow::~MainWindow() = default;
