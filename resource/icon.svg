@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  App icon design source.
+  - Feeds windows/app.ico via tools/generate_icon.ps1 (the Windows shell/exe icon).
+  - Mirrored in src/app_icon.cc (the Qt window/taskbar icon, drawn with QPainter in
+    this same 512x512 coordinate space). Keep the two in sync: any change to the
+    geometry or colors here must be reflected in app_icon.cc, and vice versa.
+-->
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs id="defs1">
+    <linearGradient id="tileGrad" x1="256" y1="40" x2="256" y2="472"
+       gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26375d" />
+      <stop offset="1" stop-color="#131d34" />
+    </linearGradient>
+    <linearGradient id="valueGrad" x1="88" y1="322" x2="335" y2="174"
+       gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2bd4a7" />
+      <stop offset="1" stop-color="#17b6dc" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded tile -->
+  <rect x="40" y="40" width="432" height="432" rx="100" ry="100"
+     fill="url(#tileGrad)" />
+
+  <g transform="translate(0,-38)">
+  <!-- Dial tick marks -->
+  <g stroke="#6f84b3" stroke-linecap="round" fill="none">
+    <!-- major ticks -->
+    <g stroke-width="7">
+      <line x1="114" y1="322" x2="136" y2="322" />
+      <line x1="155.6" y1="221.6" x2="171.15" y2="237.15" />
+      <line x1="256" y1="180" x2="256" y2="202" />
+      <line x1="356.4" y1="221.6" x2="340.85" y2="237.15" />
+      <line x1="398" y1="322" x2="376" y2="322" />
+    </g>
+    <!-- minor ticks -->
+    <g stroke-width="5" stroke-opacity="0.8">
+      <line x1="124.8" y1="267.7" x2="135.9" y2="272.25" />
+      <line x1="201.66" y1="190.8" x2="206.25" y2="201.9" />
+      <line x1="310.34" y1="190.8" x2="305.75" y2="201.9" />
+      <line x1="387.2" y1="267.7" x2="376.1" y2="272.25" />
+    </g>
+  </g>
+
+  <!-- Gauge dial: unfilled track -->
+  <path d="M 88,322 A 168,168 0 0 1 424,322"
+     fill="none" stroke="#3b4e79" stroke-width="44" stroke-linecap="round" />
+
+  <!-- Gauge dial: value arc -->
+  <path d="M 88,322 A 168,168 0 0 1 334.9,173.7"
+     fill="none" stroke="url(#valueGrad)" stroke-width="44" stroke-linecap="round" />
+
+  <!-- Needle -->
+  <line x1="241.9" y1="348.5" x2="326.4" y2="189.6"
+     stroke="#ffc247" stroke-width="26" stroke-linecap="round" />
+
+  <!-- Center hub -->
+  <circle cx="256" cy="322" r="30" fill="#101a30" stroke="#ffc247" stroke-width="10" />
+  <circle cx="256" cy="322" r="10" fill="#ffe0a0" />
+
+  <!-- qc monogram -->
+  <text x="256" y="438" text-anchor="middle"
+     font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="92"
+     fill="#eef2fb">qc</text>
+  </g>
+</svg>

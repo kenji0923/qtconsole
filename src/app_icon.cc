@@ -1,75 +1,118 @@
 #include "app_icon.h"
 
+#include <QBrush>
 #include <QColor>
-#include <QGradient>
+#include <QFont>
+#include <QFontMetricsF>
+#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
 #include <QPixmap>
+#include <QPointF>
 #include <QRectF>
 #include <QSize>
-#include <QtMath>
+#include <QString>
 
 namespace {
+// Draws the gauge icon in a 512x512 coordinate space, scaled to `size`.
+// Coordinates mirror resource/icon.svg, the single design source that also
+// feeds windows/app.ico (via tools/generate_icon.ps1). Keep the two in sync:
+// any change to the geometry or colors here must be reflected in that SVG,
+// and vice versa.
 QPixmap makeIconPixmap(const QSize& size) {
   QPixmap pixmap(size);
   pixmap.fill(Qt::transparent);
 
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing, true);
+  QPainter p(&pixmap);
+  p.setRenderHint(QPainter::Antialiasing, true);
+  p.scale(size.width() / 512.0, size.height() / 512.0);
 
-  const qreal w = static_cast<qreal>(size.width());
-  const qreal h = static_cast<qreal>(size.height());
-  const QRectF rect(1.0, 1.0, w - 2.0, h - 2.0);
-  const qreal radius = qMin(w, h) * 0.22;
+  // Rounded tile.
+  QLinearGradient tile_grad(256, 40, 256, 472);
+  tile_grad.setColorAt(0.0, QColor("#26375d"));
+  tile_grad.setColorAt(1.0, QColor("#131d34"));
+  p.setPen(Qt::NoPen);
+  p.setBrush(tile_grad);
+  p.drawRoundedRect(QRectF(40, 40, 432, 432), 100, 100);
 
-  QLinearGradient bg(rect.topLeft(), rect.bottomRight());
-  bg.setColorAt(0.0, QColor(12, 56, 88));
-  bg.setColorAt(1.0, QColor(20, 132, 95));
-  painter.setPen(Qt::NoPen);
-  painter.setBrush(bg);
-  painter.drawRoundedRect(rect, radius, radius);
+  // Content sits slightly high so it reads as vertically centered in the tile.
+  p.save();
+  p.translate(0, -38);
 
-  QPainterPath wave;
-  const qreal left = rect.left() + w * 0.10;
-  const qreal right = rect.right() - w * 0.10;
-  const qreal center_y = rect.top() + h * 0.68;
-  const qreal amp = h * 0.10;
-  const qreal width = right - left;
-  wave.moveTo(left, center_y);
-  for (int i = 1; i <= 48; ++i) {
-    const qreal t = static_cast<qreal>(i) / 48.0;
-    const qreal x = left + width * t;
-    const qreal y = center_y - qSin(t * 2.0 * M_PI * 1.6) * amp;
-    wave.lineTo(x, y);
+  // Dial tick marks.
+  {
+    QPen major(QColor("#6f84b3"), 7);
+    major.setCapStyle(Qt::RoundCap);
+    p.setPen(major);
+    p.drawLine(QPointF(114, 322), QPointF(136, 322));
+    p.drawLine(QPointF(155.6, 221.6), QPointF(171.15, 237.15));
+    p.drawLine(QPointF(256, 180), QPointF(256, 202));
+    p.drawLine(QPointF(356.4, 221.6), QPointF(340.85, 237.15));
+    p.drawLine(QPointF(398, 322), QPointF(376, 322));
+
+    QColor minor_color("#6f84b3");
+    minor_color.setAlphaF(0.8);
+    QPen minor(minor_color, 5);
+    minor.setCapStyle(Qt::RoundCap);
+    p.setPen(minor);
+    p.drawLine(QPointF(124.8, 267.7), QPointF(135.9, 272.25));
+    p.drawLine(QPointF(201.66, 190.8), QPointF(206.25, 201.9));
+    p.drawLine(QPointF(310.34, 190.8), QPointF(305.75, 201.9));
+    p.drawLine(QPointF(387.2, 267.7), QPointF(376.1, 272.25));
   }
-  QPen wave_pen(QColor(223, 255, 244), qMax(2.0, w * 0.06));
-  wave_pen.setCapStyle(Qt::RoundCap);
-  painter.setPen(wave_pen);
-  painter.drawPath(wave);
 
-  const QColor mono_color(244, 255, 251);
-  const qreal stroke = qMax(1.5, w * 0.06);
-  QPen mono_pen(mono_color, stroke);
-  mono_pen.setCapStyle(Qt::RoundCap);
-  mono_pen.setJoinStyle(Qt::RoundJoin);
-  painter.setPen(mono_pen);
-  painter.setBrush(Qt::NoBrush);
+  // Dial bounding box: center (256, 322), radius 168.
+  const QRectF dial(88, 154, 336, 336);
 
-  // Geometric monogram avoids DPI/font hinting shifts on taskbar rendering.
-  const qreal q_cx = rect.left() + w * 0.37;
-  const qreal q_cy = rect.top() + h * 0.39;
-  const qreal q_r = h * 0.105;
-  painter.drawEllipse(QPointF(q_cx, q_cy), q_r, q_r);
-  painter.drawLine(QPointF(q_cx + q_r * 0.72, q_cy + q_r * 0.72),
-                   QPointF(q_cx + q_r * 1.55, q_cy + q_r * 1.65));
+  // Unfilled track.
+  {
+    QPen track(QColor("#3b4e79"), 44);
+    track.setCapStyle(Qt::RoundCap);
+    p.setPen(track);
+    p.drawArc(dial, 0 * 16, 180 * 16);
+  }
 
-  const qreal c_cx = rect.left() + w * 0.61;
-  const qreal c_cy = rect.top() + h * 0.39;
-  const qreal c_r = h * 0.10;
-  QRectF c_rect(c_cx - c_r, c_cy - c_r, c_r * 2.0, c_r * 2.0);
-  painter.drawArc(c_rect, 35 * 16, 290 * 16);
+  // Value arc (fills the dial from the left up to the needle).
+  {
+    QLinearGradient value_grad(88, 322, 334.9, 173.7);
+    value_grad.setColorAt(0.0, QColor("#2bd4a7"));
+    value_grad.setColorAt(1.0, QColor("#17b6dc"));
+    QPen value(QBrush(value_grad), 44);
+    value.setCapStyle(Qt::RoundCap);
+    p.setPen(value);
+    p.drawArc(dial, 180 * 16, -118 * 16);
+  }
 
+  // Needle.
+  {
+    QPen needle(QColor("#ffc247"), 26);
+    needle.setCapStyle(Qt::RoundCap);
+    p.setPen(needle);
+    p.drawLine(QPointF(241.9, 348.5), QPointF(326.4, 189.6));
+  }
+
+  // Center hub.
+  p.setPen(QPen(QColor("#ffc247"), 10));
+  p.setBrush(QColor("#101a30"));
+  p.drawEllipse(QPointF(256, 322), 30, 30);
+  p.setPen(Qt::NoPen);
+  p.setBrush(QColor("#ffe0a0"));
+  p.drawEllipse(QPointF(256, 322), 10, 10);
+
+  // qc monogram, drawn as vector outlines so it scales cleanly.
+  {
+    QFont font("Arial");
+    font.setBold(true);
+    font.setPixelSize(92);
+    const QFontMetricsF metrics(font);
+    const qreal text_width = metrics.horizontalAdvance(QStringLiteral("qc"));
+    QPainterPath text_path;
+    text_path.addText(256.0 - text_width / 2.0, 438.0, font, QStringLiteral("qc"));
+    p.fillPath(text_path, QColor("#eef2fb"));
+  }
+
+  p.restore();
   return pixmap;
 }
 }  // namespace
