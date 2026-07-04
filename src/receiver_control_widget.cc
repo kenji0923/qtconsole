@@ -1,7 +1,6 @@
 #include "receiver_control_widget.h"
 
 #include <QComboBox>
-#include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -22,8 +21,8 @@ ReceiverControlWidget::ReceiverControlWidget(DataReceiver* receiver, Measurement
       mode_combo_(new QComboBox(this)),
       port_spin_(new QSpinBox(this)),
       title_edit_(new QLineEdit(this)),
-      offset_spin_(new QDoubleSpinBox(this)),
-      scale_factor_spin_(new QDoubleSpinBox(this)),
+      equation_edit_(new QLineEdit(this)),
+      format_edit_(new QLineEdit(this)),
       averaging_window_spin_(new QSpinBox(this)),
       start_button_(new QPushButton("Start", this)),
       stop_button_(new QPushButton("Stop", this)),
@@ -36,13 +35,17 @@ ReceiverControlWidget::ReceiverControlWidget(DataReceiver* receiver, Measurement
 
   title_edit_->setPlaceholderText("Measurement title");
 
-  offset_spin_->setRange(-1e9, 1e9);
-  offset_spin_->setDecimals(6);
-  offset_spin_->setValue(model_->offset());
+  equation_edit_->setText(model_->equation());
+  equation_edit_->setPlaceholderText("x  (e.g. sqrt(x)*2 + sin(x))");
+  equation_edit_->setToolTip(
+      "Transform applied to each raw sample. Variable x is the raw value.\n"
+      "Arithmetic and functions: exp, sin, cos, tan, sqrt, pow, log, abs, ...");
 
-  scale_factor_spin_->setRange(-1e9, 1e9);
-  scale_factor_spin_->setDecimals(6);
-  scale_factor_spin_->setValue(model_->scaleFactor());
+  format_edit_->setText(model_->format());
+  format_edit_->setPlaceholderText("%.3f");
+  format_edit_->setToolTip(
+      "printf-style display format with one float conversion (e/E/f/F/g/G),\n"
+      "e.g. \"%.3f\", \"%8.2e\", \"%.1f V\".");
 
   averaging_window_spin_->setRange(1, 100000);
   averaging_window_spin_->setValue(model_->averagingWindowLength());
@@ -51,8 +54,8 @@ ReceiverControlWidget::ReceiverControlWidget(DataReceiver* receiver, Measurement
   form->addRow("Protocol", mode_combo_);
   form->addRow("Port", port_spin_);
   form->addRow("Title", title_edit_);
-  form->addRow("Offset", offset_spin_);
-  form->addRow("Scale factor", scale_factor_spin_);
+  form->addRow("Equation f(x)", equation_edit_);
+  form->addRow("Format", format_edit_);
   form->addRow("Avg window (samples)", averaging_window_spin_);
 
   auto* controls = new QHBoxLayout;
@@ -69,10 +72,9 @@ ReceiverControlWidget::ReceiverControlWidget(DataReceiver* receiver, Measurement
   connect(receiver_, &DataReceiver::statusChanged, this, &ReceiverControlWidget::onStatusChanged);
 
   connect(title_edit_, &QLineEdit::textChanged, model_, &MeasurementModel::setMeasurementTitle);
-  connect(offset_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), model_,
-          &MeasurementModel::setOffset);
-  connect(scale_factor_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), model_,
-          &MeasurementModel::setScaleFactor);
+  connect(equation_edit_, &QLineEdit::textChanged, this,
+          &ReceiverControlWidget::onEquationChanged);
+  connect(format_edit_, &QLineEdit::textChanged, this, &ReceiverControlWidget::onFormatChanged);
   connect(averaging_window_spin_, qOverload<int>(&QSpinBox::valueChanged), model_,
           &MeasurementModel::setAveragingWindowLength);
   connect(mode_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
@@ -94,8 +96,21 @@ void ReceiverControlWidget::loadSettings(QSettings* settings) {
   port_spin_->setValue(settings->value("port", 9000).toInt());
 
   title_edit_->setText(settings->value("measurementTitle", "").toString());
-  offset_spin_->setValue(settings->value("offset", 0.0).toDouble());
-  scale_factor_spin_->setValue(settings->value("scaleFactor", 1.0).toDouble());
+
+  QString equation = settings->value("equation").toString();
+  if (equation.isEmpty() &&
+      (settings->contains("offset") || settings->contains("scaleFactor"))) {
+    // Migrate legacy linear transform (scale*x + offset) to an equation.
+    const double scale = settings->value("scaleFactor", 1.0).toDouble();
+    const double offset = settings->value("offset", 0.0).toDouble();
+    equation = QStringLiteral("%1*x + %2").arg(scale).arg(offset);
+  }
+  if (equation.isEmpty()) {
+    equation = QStringLiteral("x");
+  }
+  equation_edit_->setText(equation);
+  format_edit_->setText(settings->value("format", "%.3f").toString());
+
   averaging_window_spin_->setValue(settings->value("averagingWindowLength", 1).toInt());
 
   settings->endGroup();
@@ -106,8 +121,8 @@ void ReceiverControlWidget::saveSettings(QSettings* settings) const {
   settings->setValue("mode", mode_combo_->currentData().toInt());
   settings->setValue("port", port_spin_->value());
   settings->setValue("measurementTitle", title_edit_->text());
-  settings->setValue("offset", offset_spin_->value());
-  settings->setValue("scaleFactor", scale_factor_spin_->value());
+  settings->setValue("equation", equation_edit_->text());
+  settings->setValue("format", format_edit_->text());
   settings->setValue("averagingWindowLength", averaging_window_spin_->value());
   settings->endGroup();
 }
@@ -150,4 +165,24 @@ void ReceiverControlWidget::onStop() { receiver_->stop(); }
 
 void ReceiverControlWidget::onStatusChanged(bool, const QString& message) {
   status_label_->setText(message);
+}
+
+namespace {
+const char* kInvalidStyle = "QLineEdit { background-color: #5a1e1e; color: #ffd5d5; }";
+}  // namespace
+
+void ReceiverControlWidget::onEquationChanged(const QString& text) {
+  model_->setEquation(text);
+  const bool ok = model_->equationValid();
+  equation_edit_->setStyleSheet(ok ? QString() : kInvalidStyle);
+  equation_edit_->setToolTip(ok ? QString("Variable x is the raw value.")
+                                : QString("Invalid equation: %1").arg(model_->equationError()));
+}
+
+void ReceiverControlWidget::onFormatChanged(const QString& text) {
+  model_->setFormat(text);
+  const bool ok = model_->formatValid();
+  format_edit_->setStyleSheet(ok ? QString() : kInvalidStyle);
+  format_edit_->setToolTip(ok ? QString("printf-style format, e.g. %.3f")
+                              : QString("Invalid format: use one float conversion, e.g. %.3f"));
 }

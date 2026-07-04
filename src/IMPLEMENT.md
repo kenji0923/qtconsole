@@ -25,7 +25,8 @@ Accepts TCP through WebSocket with keep-alive feature, or UDP packet at the port
 ## Configurations
 - Auto-save the configurations, including window layouts, to OS-specific locations. The organization name is "kshu" and app name is the window title defined by the following line. From the "File" menu, configurations can be saved and loaded to/from a specified path.
 - Line input to set the title of measurement. The widget title should be updated dynamically according to this such as "qtconsole_{receiver_protocol(UDP|WS)}{port_number}_{title_of_measurement}". For Windows, use ini files to be put in AppData.
-- An offset for the received values and scale factor for the received values. Then values will be recorded as "scale_factor * raw_value + offset".
+- A transform equation applied to each received value, where `x` is the raw value (e.g. "sqrt(x)*2 + sin(x)"). Supports arithmetic and functions (exp, sin, cos, tan, sqrt, pow, log, abs, ...) via exprtk. An invalid equation falls back to the identity (x). Legacy offset/scale settings migrate to "scale*x + offset".
+- A printf-style display format for values (e.g. "%.3f", "%8.2e", "%.1f V"); must contain exactly one float conversion (e/E/f/F/g/G).
 - Averaging window length used in Numeric / Ratio and Time series.
 - Time duration (width of x-axis) for time series
 - Export function for time series, as numeric data (timestamp,raw_value,processed_value) or image files (png or pdf).

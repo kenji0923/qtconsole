@@ -36,6 +36,8 @@ class ReceiverControlWidget : public QWidget {
   void onStart();
   void onStop();
   void onStatusChanged(bool running, const QString& message);
+  void onEquationChanged(const QString& text);
+  void onFormatChanged(const QString& text);
 
  private:
   DataReceiver* receiver_;
@@ -44,8 +46,8 @@ class ReceiverControlWidget : public QWidget {
   QComboBox* mode_combo_;
   QSpinBox* port_spin_;
   QLineEdit* title_edit_;
-  QDoubleSpinBox* offset_spin_;
-  QDoubleSpinBox* scale_factor_spin_;
+  QLineEdit* equation_edit_;
+  QLineEdit* format_edit_;
   QSpinBox* averaging_window_spin_;
   QPushButton* start_button_;
   QPushButton* stop_button_;

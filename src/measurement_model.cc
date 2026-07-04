@@ -1,8 +1,60 @@
 #include "measurement_model.h"
 
+#include <QRegularExpression>
 #include <QtMath>
 
-MeasurementModel::MeasurementModel(QObject* parent) : QObject(parent) { rate_timer_.start(); }
+#include <cmath>
+#include <string>
+
+#include "exprtk.hpp"
+
+// Holds the compiled exprtk expression and the input variable it reads.
+struct EquationEvaluator {
+  double x = 0.0;
+  exprtk::symbol_table<double> symbols;
+  exprtk::expression<double> expression;
+  exprtk::parser<double> parser;
+
+  EquationEvaluator() {
+    symbols.add_variable("x", x);
+    symbols.add_constants();  // pi, epsilon, inf
+    expression.register_symbol_table(symbols);
+  }
+
+  bool compile(const std::string& text, QString* error) {
+    if (parser.compile(text, expression)) {
+      return true;
+    }
+    if (error) {
+      *error = QString::fromStdString(parser.error());
+    }
+    return false;
+  }
+
+  double eval(double value) {
+    x = value;
+    return expression.value();
+  }
+};
+
+namespace {
+// Accepts a printf format with exactly one floating conversion (e/E/f/F/g/G),
+// optional flags/width/precision, and arbitrary surrounding literal text
+// (with %% allowed). Rejects %n, %s, length modifiers, and multiple specifiers.
+bool isValidFloatFormat(const QString& format) {
+  static const QRegularExpression re(
+      QStringLiteral("^(?:[^%]|%%)*%[-+ 0#]*[0-9]*(?:\\.[0-9]+)?[eEfFgG](?:[^%]|%%)*$"));
+  return re.match(format).hasMatch();
+}
+}  // namespace
+
+MeasurementModel::MeasurementModel(QObject* parent)
+    : QObject(parent), evaluator_(std::make_unique<EquationEvaluator>()) {
+  rate_timer_.start();
+  evaluator_->compile("x", &equation_error_);
+}
+
+MeasurementModel::~MeasurementModel() = default;
 
 void MeasurementModel::setReferenceMax(double max_value) {
   if (max_value > reference_min_) {
@@ -20,13 +72,36 @@ void MeasurementModel::setReferenceMin(double min_value) {
 
 double MeasurementModel::referenceMin() const { return reference_min_; }
 
-void MeasurementModel::setScaleFactor(double scaleFactor) { scale_factor_ = scaleFactor; }
+void MeasurementModel::setEquation(const QString& equation) {
+  equation_ = equation;
+  equation_error_.clear();
+  const QString trimmed = equation.trimmed();
+  // An empty equation is treated as the identity transform.
+  const std::string text = (trimmed.isEmpty() ? QStringLiteral("x") : trimmed).toStdString();
+  equation_valid_ = evaluator_->compile(text, &equation_error_);
+}
 
-double MeasurementModel::scaleFactor() const { return scale_factor_; }
+QString MeasurementModel::equation() const { return equation_; }
 
-void MeasurementModel::setOffset(double offset) { offset_ = offset; }
+bool MeasurementModel::equationValid() const { return equation_valid_; }
 
-double MeasurementModel::offset() const { return offset_; }
+QString MeasurementModel::equationError() const { return equation_error_; }
+
+void MeasurementModel::setFormat(const QString& format) {
+  format_ = format;
+  format_valid_ = isValidFloatFormat(format);
+}
+
+QString MeasurementModel::format() const { return format_; }
+
+bool MeasurementModel::formatValid() const { return format_valid_; }
+
+QString MeasurementModel::formatValue(double value) const {
+  if (format_valid_) {
+    return QString::asprintf(format_.toUtf8().constData(), value);
+  }
+  return QString::number(value, 'g', 6);
+}
 
 void MeasurementModel::setAveragingWindowLength(int averagingWindowLength) {
   averaging_window_length_ = qMax(1, averagingWindowLength);
@@ -49,7 +124,10 @@ void MeasurementModel::pushRawSample(double raw_value) {
   const qint64 now_ms = rate_timer_.elapsed();
   last_timestamp_ms_ = now_ms;
 
-  const double processed_value = scale_factor_ * raw_value + offset_;
+  double processed_value = equation_valid_ ? evaluator_->eval(raw_value) : raw_value;
+  if (!std::isfinite(processed_value)) {
+    processed_value = raw_value;
+  }
   averaging_values_.enqueue(processed_value);
   averaging_sum_ += processed_value;
   pruneAveragingQueue();

@@ -32,7 +32,12 @@ set_target_properties(qtconsole PROPERTIES
   WIN32_EXECUTABLE ON
 )
 
-target_include_directories(qtconsole PRIVATE src)
+target_include_directories(qtconsole PRIVATE src third_party/exprtk)
+
+# exprtk compiles into a very large translation unit; MSVC needs /bigobj.
+if(MSVC)
+  set_source_files_properties(src/measurement_model.cc PROPERTIES COMPILE_OPTIONS "/bigobj")
+endif()
 
 target_link_libraries(qtconsole PRIVATE
   Qt6::Widgets

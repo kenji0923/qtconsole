@@ -57,11 +57,11 @@ StatisticsWidget::StatisticsWidget(MeasurementModel* model, QWidget* parent)
 }
 
 void StatisticsWidget::onStatisticsUpdated(const MeasurementModel::Stats& stats) {
-  current_->setText(QString::number(stats.current, 'f', 4));
-  average_->setText(QString::number(stats.average, 'f', 4));
-  stddev_->setText(QString::number(stats.stddev, 'f', 4));
-  min_->setText(QString::number(stats.min, 'f', 4));
-  max_->setText(QString::number(stats.max, 'f', 4));
+  current_->setText(model_->formatValue(stats.current));
+  average_->setText(model_->formatValue(stats.average));
+  stddev_->setText(model_->formatValue(stats.stddev));
+  min_->setText(model_->formatValue(stats.min));
+  max_->setText(model_->formatValue(stats.max));
   count_->setText(QString::number(stats.count));
   rate_->setText(QString::number(stats.rate_hz, 'f', 1));
 }

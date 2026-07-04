@@ -6,6 +6,10 @@
 #include <QQueue>
 #include <QString>
 
+#include <memory>
+
+struct EquationEvaluator;
+
 class MeasurementModel : public QObject {
   Q_OBJECT
  public:
@@ -20,17 +24,31 @@ class MeasurementModel : public QObject {
   };
 
   explicit MeasurementModel(QObject* parent = nullptr);
+  ~MeasurementModel();
 
   void setReferenceMax(double max_value);
   double referenceMax() const;
   void setReferenceMin(double min_value);
   double referenceMin() const;
 
-  void setScaleFactor(double scaleFactor);
-  double scaleFactor() const;
+  // Transform equation applied to each raw sample. The variable `x` is the raw
+  // value (e.g. "sqrt(x)*2 + sin(x)"). Supports arithmetic and the usual
+  // functions (exp, sin, cos, sqrt, pow, log, ...). An invalid equation falls
+  // back to the identity transform (x).
+  void setEquation(const QString& equation);
+  QString equation() const;
+  bool equationValid() const;
+  QString equationError() const;
 
-  void setOffset(double offset);
-  double offset() const;
+  // printf-style display format, e.g. "%.3f" or "%8.2e V". Must contain exactly
+  // one floating conversion (e/E/f/F/g/G). Invalid formats fall back to a
+  // general format.
+  void setFormat(const QString& format);
+  QString format() const;
+  bool formatValid() const;
+
+  // Formats a value using the current display format.
+  QString formatValue(double value) const;
 
   void setAveragingWindowLength(int averagingWindowLength);
   int averagingWindowLength() const;
@@ -59,8 +77,12 @@ class MeasurementModel : public QObject {
 
   double reference_max_ = 100.0;
   double reference_min_ = 0.0;
-  double scale_factor_ = 1.0;
-  double offset_ = 0.0;
+  QString equation_ = "x";
+  bool equation_valid_ = true;
+  QString equation_error_;
+  std::unique_ptr<EquationEvaluator> evaluator_;
+  QString format_ = "%.3f";
+  bool format_valid_ = true;
   int averaging_window_length_ = 1;
   bool stats_running_ = true;
   QString measurement_title_;

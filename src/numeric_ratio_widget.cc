@@ -84,7 +84,7 @@ void NumericRatioWidget::saveSettings(QSettings* settings) const {
 
 void NumericRatioWidget::onSampleUpdated(double, double, double averaged_value, double ratio,
                                          qint64) {
-  value_label_->setText(QString::number(averaged_value, 'f', 3));
+  value_label_->setText(model_->formatValue(averaged_value));
   ratio_bar_->setValue(static_cast<int>(ratio * 1000.0));
 }
 
