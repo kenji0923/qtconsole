@@ -124,7 +124,10 @@ void MainWindow::updateWindowIdentity() {
   const QString prefix = "qtconsole_";
   const QString display_title =
       identity.startsWith(prefix) ? identity.mid(prefix.size()) : identity;
-  title_line_dock_->setWindowTitle(display_title);
+  // Show the identity in the title-line body; the dock keeps its static
+  // "Title line" name so the View-menu toggle stays labelled and the dock
+  // has real content (a zero-height body failed to reappear when re-checked).
+  title_line_widget_->setTitle(display_title);
 }
 
 void MainWindow::loadSettings() {
