@@ -2,7 +2,6 @@
 
 #include <QVector>
 #include <QWidget>
-#include <deque>
 
 QT_BEGIN_NAMESPACE
 class QChart;
@@ -13,22 +12,23 @@ class QLineSeries;
 class QPushButton;
 class QSettings;
 class QTimer;
+class QDateTimeAxis;
 class QValueAxis;
 QT_END_NAMESPACE
 
 class MeasurementModel;
+class HistoryManager;
 
 class TimeSeriesWidget : public QWidget {
   Q_OBJECT
  public:
-  explicit TimeSeriesWidget(MeasurementModel* model, QWidget* parent = nullptr);
+  explicit TimeSeriesWidget(MeasurementModel* model, HistoryManager* history,
+                            QWidget* parent = nullptr);
 
   void loadSettings(QSettings* settings);
   void saveSettings(QSettings* settings) const;
 
  private slots:
-  void onSampleUpdated(double raw_value, double processed_value, double averaged_value,
-                       double ratio, qint64 timestamp_ms);
   void onHistoryReset();
   void onAutoScaleToggled(bool checked);
   void onRangeEdited();
@@ -39,22 +39,17 @@ class TimeSeriesWidget : public QWidget {
   void renderFrame();
 
  private:
-  struct SamplePoint {
-    qint64 timestamp_ms = 0;
-    double raw_value = 0.0;
-    double processed_value = 0.0;
-    double averaged_value = 0.0;
-  };
-
   void applyAxisRange();
-  void updateXAxisRangeFor(qreal right_sec);
-  QVector<QPointF> buildDisplayPoints() const;
+  void updateXAxisRangeFor(qint64 right_ms);
+  void updateXAxisAppearance(qint64 left_ms, qint64 right_ms);
+  qint64 currentRightTimestampMs() const;
 
   MeasurementModel* model_;
+  HistoryManager* history_;
   QChart* chart_;
   QChartView* chart_view_;
   QLineSeries* series_;
-  QValueAxis* axis_x_;
+  QDateTimeAxis* axis_x_;
   QValueAxis* axis_y_;
 
   QCheckBox* auto_scale_check_;
@@ -69,6 +64,5 @@ class TimeSeriesWidget : public QWidget {
 
   qint64 window_ms_ = 10000;
   bool paused_ = false;
-  QVector<SamplePoint> samples_;
-  std::deque<SamplePoint> window_samples_;
+  qint64 paused_right_ms_ = 0;
 };

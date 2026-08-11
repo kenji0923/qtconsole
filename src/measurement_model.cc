@@ -1,5 +1,6 @@
 #include "measurement_model.h"
 
+#include <QDateTime>
 #include <QRegularExpression>
 #include <QtMath>
 
@@ -121,8 +122,7 @@ void MeasurementModel::setMeasurementTitle(const QString& measurementTitle) {
 QString MeasurementModel::measurementTitle() const { return measurement_title_; }
 
 void MeasurementModel::pushRawSample(double raw_value) {
-  const qint64 now_ms = rate_timer_.elapsed();
-  last_timestamp_ms_ = now_ms;
+  const qint64 timestamp_ms = QDateTime::currentMSecsSinceEpoch();
 
   double processed_value = equation_valid_ ? evaluator_->eval(raw_value) : raw_value;
   if (!std::isfinite(processed_value)) {
@@ -139,7 +139,12 @@ void MeasurementModel::pushRawSample(double raw_value) {
   const double range = reference_max_ - reference_min_;
   const double ratio =
       range > 0.0 ? qBound(0.0, (averaged_value - reference_min_) / range, 1.0) : 0.0;
-  emit sampleUpdated(raw_value, processed_value, averaged_value, ratio, now_ms);
+  MeasurementSample sample;
+  sample.timestamp_ms = timestamp_ms;
+  sample.raw_value = raw_value;
+  sample.processed_value = processed_value;
+  sample.averaged_value = averaged_value;
+  emit sampleUpdated(sample, ratio);
 
   if (stats_running_) {
     updateStats(processed_value);

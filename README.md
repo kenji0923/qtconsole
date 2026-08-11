@@ -11,6 +11,7 @@ Realtime Qt6 console for displaying incoming measurements with low latency.
 - UDP or WebSocket input receiver
 - Dockable/tabbed panes
 - Config persistence (auto-save)
+- Non-blocking daily CSV history archive
 - Config import/export from `File` menu
 - Startup CLI overrides for protocol/port/measurement title
 
@@ -135,6 +136,14 @@ Behavior:
 ## Notes
 
 - Time Series supports reset, pause/resume, and export:
-  - Data export: CSV (`timestamp_ms,raw_value,processed_value`)
+  - Local date/time x-axis with adaptive labels
+  - Data export for the visible time range:
+    `timestamp_iso8601,epoch_ms,session_id,raw_value,processed_value,averaged_value`
   - Image export: PNG or PDF
+- Daily history is always saved by a separate writer process:
+  - Default root: the local application-data directory under `kshu/qtconsole/history`
+  - Layout: `<root>/<measurement-id>/<year>/<MMdd>.csv`
+  - The append interval, archive root, and in-memory sample limit are configured from
+    `Config > History Settings...`
+  - Writer failures are reported in the status bar without interrupting reception
 - `View` menu includes pane visibility toggles and `Always on top`.

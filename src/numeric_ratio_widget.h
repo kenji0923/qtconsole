@@ -2,6 +2,8 @@
 
 #include <QWidget>
 
+#include "measurement_sample.h"
+
 class QLabel;
 class QProgressBar;
 class QDoubleSpinBox;
@@ -18,8 +20,7 @@ class NumericRatioWidget : public QWidget {
   void saveSettings(QSettings* settings) const;
 
  private slots:
-  void onSampleUpdated(double raw_value, double processed_value, double averaged_value,
-                       double ratio, qint64 timestamp_ms);
+  void onSampleUpdated(const MeasurementSample& sample, double ratio);
   void onReferenceControlsToggled(bool enabled);
   void onReferenceMinChanged(double value);
   void onReferenceMaxChanged(double value);

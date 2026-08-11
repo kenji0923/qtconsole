@@ -37,6 +37,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path deploy | Out-Null
           Copy-Item build/Release/qtconsole.exe deploy/
+          Copy-Item build/Release/qtconsole-history-writer.exe deploy/
           windeployqt --release --dir deploy deploy/qtconsole.exe
 
       - name: Create zip

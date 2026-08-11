@@ -19,6 +19,9 @@ add_executable(qtconsole
   src/main.cc
   src/app_icon.cc
   src/main_window.cc
+  src/history_manager.cc
+  src/history_paths.cc
+  src/history_settings_dialog.cc
   src/measurement_model.cc
   src/numeric_ratio_widget.cc
   src/title_line_widget.cc
@@ -27,6 +30,14 @@ add_executable(qtconsole
   src/receiver_control_widget.cc
   src/data_receiver.cc
 )
+
+add_executable(qtconsole-history-writer
+  src/history_writer_main.cc
+  src/history_paths.cc
+)
+
+target_include_directories(qtconsole-history-writer PRIVATE src)
+target_link_libraries(qtconsole-history-writer PRIVATE Qt6::Core)
 
 set_target_properties(qtconsole PROPERTIES
   WIN32_EXECUTABLE ON

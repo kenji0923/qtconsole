@@ -8,6 +8,8 @@
 
 #include <memory>
 
+#include "measurement_sample.h"
+
 struct EquationEvaluator;
 
 class MeasurementModel : public QObject {
@@ -65,8 +67,7 @@ class MeasurementModel : public QObject {
   void stopStatistics();
 
  signals:
-  void sampleUpdated(double raw_value, double processed_value, double averaged_value, double ratio,
-                     qint64 timestamp_ms);
+  void sampleUpdated(const MeasurementSample& sample, double ratio);
   void statisticsUpdated(const MeasurementModel::Stats& stats);
   void historyReset();
   void measurementTitleChanged(const QString& measurementTitle);
@@ -88,8 +89,6 @@ class MeasurementModel : public QObject {
   QString measurement_title_;
 
   QElapsedTimer rate_timer_;
-  qint64 last_timestamp_ms_ = 0;
-
   qint64 count_ = 0;
   double mean_ = 0.0;
   double m2_ = 0.0;
