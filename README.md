@@ -75,6 +75,35 @@ pip install websockets
 
 ## Configuration Saving
 
+### Datagram relay
+
+Open the detachable **Relay** panel from **View > Relay** to forward incoming
+User Datagram Protocol (UDP) datagrams to multiple destinations.
+
+1. Click **Add** and enter a host name or address and a port (1-65535).
+2. Repeat for additional destinations. Each row has an **Enabled** checkbox.
+3. Click **Apply** after editing destinations, then check **Enable relay**.
+4. Select rows and click **Remove selected** to stop forwarding to those destinations.
+
+Each datagram is forwarded unchanged, before numeric parsing or equation processing,
+including binary, nonnumeric, and empty datagrams. WebSocket input is not relayed.
+Hiding the panel does not stop forwarding; uncheck **Enable relay** to stop it.
+Host names resolve asynchronously when destinations are applied; click **Apply** to
+retry a failed lookup or refresh an address. Row status reports resolution and local
+send errors; "Sending" does not confirm delivery at the destination.
+
+Relay settings are saved with the window configuration and included in configuration
+export/import. Relay is disabled by default. A saved enabled relay resumes on startup.
+Direct forwarding back to this receiver's local address and port is blocked.
+Avoid cycles between separate relays, because unchanged datagrams have no hop limit.
+
+### Equation error recovery
+
+An invalid equation falls back to the raw value. Correcting the equation restores
+conversion immediately without restarting reception. Non-finite evaluation results
+(for example, a square root of a negative value) also fall back to the raw value for
+that sample.
+
 ### Auto-save
 
 Auto-saving is enabled.
@@ -134,6 +163,14 @@ Behavior:
 3. Receiver starts automatically using resulting mode/port
 
 ## Notes
+
+Regression tests (requires the Qt6 Test module):
+
+~~~bash
+cmake -S . -B build -DQTCONSOLE_BUILD_TESTS=ON
+cmake --build build -j
+ctest --test-dir build --output-on-failure -C Release
+~~~
 
 - Time Series supports reset, pause/resume, and export:
   - Local date/time x-axis with adaptive labels

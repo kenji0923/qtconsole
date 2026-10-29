@@ -28,6 +28,7 @@ class DataReceiver : public QObject {
 
  signals:
   void sampleReceived(double value);
+  void udpDatagramReceived(const QByteArray& payload);
   void statusChanged(bool running, const QString& message);
 
  private slots:

@@ -29,6 +29,8 @@ add_executable(qtconsole
   src/statistics_widget.cc
   src/receiver_control_widget.cc
   src/data_receiver.cc
+  src/udp_relay.cc
+  src/relay_widget.cc
 )
 
 add_executable(qtconsole-history-writer
@@ -56,3 +58,20 @@ target_link_libraries(qtconsole PRIVATE
   Qt6::Network
   Qt6::WebSockets
 )
+
+option(QTCONSOLE_BUILD_TESTS "Build regression tests" OFF)
+if(QTCONSOLE_BUILD_TESTS)
+  enable_testing()
+  find_package(Qt6 REQUIRED COMPONENTS Test)
+  add_executable(qtconsole-tests
+    tests/regression_test.cc
+    src/measurement_model.cc
+    src/data_receiver.cc
+    src/udp_relay.cc
+    src/relay_widget.cc
+  )
+  target_include_directories(qtconsole-tests PRIVATE src third_party/exprtk)
+  target_link_libraries(qtconsole-tests PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::Test)
+  add_test(NAME qtconsole-regressions COMMAND qtconsole-tests)
+  set_tests_properties(qtconsole-regressions PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()

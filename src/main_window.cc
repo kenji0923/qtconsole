@@ -22,6 +22,7 @@
 #include "measurement_model.h"
 #include "numeric_ratio_widget.h"
 #include "receiver_control_widget.h"
+#include "relay_widget.h"
 #include "statistics_widget.h"
 #include "time_series_widget.h"
 #include "title_line_widget.h"
@@ -103,6 +104,13 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
   tabifyDockWidget(series_dock, stats_dock);
   numeric_dock->raise();
 
+  relay_widget_ = new RelayWidget(new UdpRelay(receiver_, this), this);
+  auto* relay_dock = new QDockWidget("Relay", this);
+  relay_dock->setObjectName("relay_dock");
+  relay_dock->setWidget(relay_widget_);
+  addDockWidget(Qt::BottomDockWidgetArea, relay_dock);
+  relay_dock->hide();
+
   auto* file_menu = menuBar()->addMenu("File");
   file_menu->addAction("Save Config As...", this, &MainWindow::onSaveConfigAs);
   file_menu->addAction("Load Config...", this, &MainWindow::onLoadConfig);
@@ -113,6 +121,7 @@ MainWindow::MainWindow(const StartupOptions& startup_options, QWidget* parent)
   view_menu->addAction(numeric_dock->toggleViewAction());
   view_menu->addAction(series_dock->toggleViewAction());
   view_menu->addAction(stats_dock->toggleViewAction());
+  view_menu->addAction(relay_dock->toggleViewAction());
   always_on_top_action_ = view_menu->addAction("Always on top");
   always_on_top_action_->setCheckable(true);
   connect(always_on_top_action_, &QAction::toggled, this, &MainWindow::onToggleAlwaysOnTop);
@@ -188,6 +197,7 @@ void MainWindow::loadSettings() {
   numeric_ratio_widget_->loadSettings(&settings);
   receiver_control_widget_->loadSettings(&settings);
   time_series_widget_->loadSettings(&settings);
+  relay_widget_->loadSettings(&settings);
   history_->applyConfig(loadHistoryConfig(buildWindowIdentity()));
   settings.beginGroup("statistics");
   const bool statistics_running = settings.value("running", true).toBool();
@@ -220,6 +230,7 @@ void MainWindow::saveSettings() const {
   numeric_ratio_widget_->saveSettings(&settings);
   receiver_control_widget_->saveSettings(&settings);
   time_series_widget_->saveSettings(&settings);
+  relay_widget_->saveSettings(&settings);
   const QString history_id = history_->activeMeasurementId().isEmpty()
                                  ? buildWindowIdentity()
                                  : history_->activeMeasurementId();
@@ -363,6 +374,7 @@ void MainWindow::onSaveConfigAs() {
   numeric_ratio_widget_->saveSettings(&file_settings);
   receiver_control_widget_->saveSettings(&file_settings);
   time_series_widget_->saveSettings(&file_settings);
+  relay_widget_->saveSettings(&file_settings);
   file_settings.beginGroup("statistics");
   file_settings.setValue("running", model_->statisticsRunning());
   file_settings.endGroup();
@@ -389,6 +401,7 @@ void MainWindow::onLoadConfig() {
   numeric_ratio_widget_->loadSettings(&file_settings);
   receiver_control_widget_->loadSettings(&file_settings);
   time_series_widget_->loadSettings(&file_settings);
+  relay_widget_->loadSettings(&file_settings);
   file_settings.beginGroup("statistics");
   const bool statistics_running = file_settings.value("running", true).toBool();
   if (statistics_running) {

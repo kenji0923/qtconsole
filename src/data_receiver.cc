@@ -87,7 +87,12 @@ void DataReceiver::onUdpReadyRead() {
   while (udp_socket_ && udp_socket_->hasPendingDatagrams()) {
     QByteArray payload;
     payload.resize(static_cast<int>(udp_socket_->pendingDatagramSize()));
-    udp_socket_->readDatagram(payload.data(), payload.size());
+    const qint64 received = udp_socket_->readDatagram(payload.data(), payload.size());
+    if (received < 0) {
+      break;
+    }
+    payload.resize(static_cast<int>(received));
+    emit udpDatagramReceived(payload);
     handlePayload(payload);
   }
 }

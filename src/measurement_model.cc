@@ -23,6 +23,9 @@ struct EquationEvaluator {
   }
 
   bool compile(const std::string& text, QString* error) {
+    // A failed parse can clear the expression, including its symbol tables.
+    expression = exprtk::expression<double>();
+    expression.register_symbol_table(symbols);
     if (parser.compile(text, expression)) {
       return true;
     }

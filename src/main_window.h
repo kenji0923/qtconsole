@@ -9,6 +9,7 @@ class MeasurementModel;
 class QSettings;
 class NumericRatioWidget;
 class ReceiverControlWidget;
+class RelayWidget;
 class TimeSeriesWidget;
 class TitleLineWidget;
 class QDockWidget;
@@ -64,6 +65,7 @@ class MainWindow : public QMainWindow {
   NumericRatioWidget* numeric_ratio_widget_;
   ReceiverControlWidget* receiver_control_widget_;
   TimeSeriesWidget* time_series_widget_;
+  RelayWidget* relay_widget_;
   QDockWidget* input_dock_;
   QDockWidget* title_line_dock_;
   QAction* always_on_top_action_;
